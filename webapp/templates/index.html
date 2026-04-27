@@ -362,7 +362,7 @@
 const map = L.map('map', { center: [-1.8312, -78.1834], zoom: 7 });
 
 const bases = {
-  'CartoDB Oscuro': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  'OpenStreetMap': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
     { attribution: '© CartoDB', maxZoom: 19 }),
   'OpenStreetMap': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     { attribution: '© OSM', maxZoom: 19 }),
@@ -802,8 +802,19 @@ async function loadConali(nombre, color, peso) {
 // INICIO
 // ══════════════════════════════════════
 (async function init() {
+  // Esperar que el mapa esté listo antes de cargar datos
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  // Cargar modo TODO por defecto para mostrar histórico
+  currentHours  = 999999;
+  modoHistorico = true;
+  document.querySelector('.time-btn:last-child').classList.add('active');
+  
   await Promise.all([loadSismos(), loadVolcanes(), loadStats(), loadAlertas()]);
   startRefresh();
+  
+  // Forzar redibujado del mapa
+  setTimeout(() => { map.invalidateSize(); }, 1000);
 })();
 </script>
 </body>
