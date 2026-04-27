@@ -248,30 +248,45 @@
       </div>
     </div>
 
-    <!-- CAPAS -->
-    <div class="sec">
-      <div class="sec-title">Capas del mapa</div>
-      <div class="layer-row" onclick="toggleLayer('sismos')">
-        <div class="layer-dot" style="background:#FF6600"></div>
-        <span class="layer-name">Sismos</span>
-        <label class="tog"><input type="checkbox" id="tog-sismos" checked><span class="sl"></span></label>
-      </div>
-      <div class="layer-row" onclick="toggleLayer('volcanes')">
-        <div class="layer-dot" style="background:#EF9F27"></div>
-        <span class="layer-name">Volcanes</span>
-        <label class="tog"><input type="checkbox" id="tog-volcanes" checked><span class="sl"></span></label>
-      </div>
-      <div class="layer-row" onclick="toggleLayer('heatmap')">
-        <div class="layer-dot" style="background:#FF0000"></div>
-        <span class="layer-name">Mapa de calor</span>
-        <label class="tog"><input type="checkbox" id="tog-heatmap"><span class="sl"></span></label>
-      </div>
-      <div class="layer-row" onclick="toggleLayer('placas')">
-        <div class="layer-dot" style="background:#a855f7"></div>
-        <span class="layer-name">Placas tectónicas</span>
-        <label class="tog"><input type="checkbox" id="tog-placas"><span class="sl"></span></label>
-      </div>
-    </div>
+  <!-- CAPAS -->
+<div class="sec">
+  <div class="sec-title">Capas del mapa</div>
+  <div class="layer-row" onclick="toggleLayer('sismos')">
+    <div class="layer-dot" style="background:#FF6600"></div>
+    <span class="layer-name">Sismos</span>
+    <label class="tog"><input type="checkbox" id="tog-sismos" checked><span class="sl"></span></label>
+  </div>
+  <div class="layer-row" onclick="toggleLayer('volcanes')">
+    <div class="layer-dot" style="background:#EF9F27"></div>
+    <span class="layer-name">Volcanes</span>
+    <label class="tog"><input type="checkbox" id="tog-volcanes" checked><span class="sl"></span></label>
+  </div>
+  <div class="layer-row" onclick="toggleLayer('heatmap')">
+    <div class="layer-dot" style="background:#FF0000"></div>
+    <span class="layer-name">Mapa de calor</span>
+    <label class="tog"><input type="checkbox" id="tog-heatmap"><span class="sl"></span></label>
+  </div>
+  <div class="layer-row" onclick="toggleLayer('placas')">
+    <div class="layer-dot" style="background:#a855f7"></div>
+    <span class="layer-name">Placas tectónicas</span>
+    <label class="tog"><input type="checkbox" id="tog-placas"><span class="sl"></span></label>
+  </div>
+  <div class="layer-row" onclick="toggleLayer('provincias')">
+    <div class="layer-dot" style="background:#00cc44"></div>
+    <span class="layer-name">Provincias</span>
+    <label class="tog"><input type="checkbox" id="tog-provincias"><span class="sl"></span></label>
+  </div>
+  <div class="layer-row" onclick="toggleLayer('cantones')">
+    <div class="layer-dot" style="background:#378add"></div>
+    <span class="layer-name">Cantones</span>
+    <label class="tog"><input type="checkbox" id="tog-cantones"><span class="sl"></span></label>
+  </div>
+  <div class="layer-row" onclick="toggleLayer('parroquias')">
+    <div class="layer-dot" style="background:#ffd700"></div>
+    <span class="layer-name">Parroquias</span>
+    <label class="tog"><input type="checkbox" id="tog-parroquias"><span class="sl"></span></label>
+  </div>
+</div>
 
     <!-- ÚLTIMOS EVENTOS -->
     <div class="sec" style="flex:1">
@@ -364,6 +379,9 @@ const grpSismos   = L.layerGroup().addTo(map);
 const grpVolcanes = L.layerGroup().addTo(map);
 const grpPlacas   = L.layerGroup();
 let   heatLayer   = null;
+const grpProvincias = L.layerGroup();
+const grpCantones   = L.layerGroup();
+const grpParroquias = L.layerGroup();
 
 // ══════════════════════════════════════
 // ESTADO GLOBAL
@@ -723,7 +741,18 @@ function searchLocation(q) {
     } catch(e) {}
   }, 600);
 }
-
+if (name==='provincias') {
+  if (cb.checked) { loadConali('provincias', '#00cc44', 1.5).then(() => grpProvincias.addTo(map)); }
+  else { map.removeLayer(grpProvincias); }
+}
+if (name==='cantones') {
+  if (cb.checked) { loadConali('cantones', '#378add', 1).then(() => grpCantones.addTo(map)); }
+  else { map.removeLayer(grpCantones); }
+}
+if (name==='parroquias') {
+  if (cb.checked) { loadConali('parroquias_simple', '#ffd700', 0.5).then(() => grpParroquias.addTo(map)); }
+  else { map.removeLayer(grpParroquias); }
+}
 // ══════════════════════════════════════
 // AUTO-REFRESH
 // ══════════════════════════════════════
@@ -736,6 +765,37 @@ function startRefresh() {
       await Promise.all([loadSismos(), loadVolcanes(), loadStats(), loadAlertas()]);
     }
   }, 1000);
+}
+
+
+async function loadConali(nombre, color, peso) {
+  const grps = { provincias: grpProvincias, cantones: grpCantones, parroquias: grpParroquias };
+  const grp  = nombre.startsWith('prov') ? grpProvincias :
+               nombre.startsWith('cant') ? grpCantones : grpParroquias;
+  grp.clearLayers();
+  try {
+    const resp = await fetch(`/data/${nombre}.geojson`);
+    const data = await resp.json();
+    L.geoJSON(data, {
+      style: {
+        color:       color,
+        weight:      peso,
+        opacity:     0.7,
+        fillOpacity: 0.05,
+        fillColor:   color,
+      },
+      onEachFeature: (feature, layer) => {
+        const p = feature.properties;
+        const nombre_lugar = p.DPA_DESPRO || p.DPA_DESCAN || p.DPA_DESPAR || p.NOMBRE || '';
+        const codigo       = p.DPA_PROVIN || p.DPA_CANTON || p.DPA_PARROQ || '';
+        if (nombre_lugar) {
+          layer.bindTooltip(`<b>${nombre_lugar}</b><br>Código: ${codigo}`, {sticky: true});
+        }
+      }
+    }).addTo(grp);
+  } catch(e) {
+    console.error(`Error cargando ${nombre}:`, e);
+  }
 }
 
 // ══════════════════════════════════════
