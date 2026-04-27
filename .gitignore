@@ -1,0 +1,28 @@
+# Base de datos local (se regenera en el servidor)
+geoportal.db
+*.db-journal
+
+# Logs locales
+logs/
+*.log
+*.csv
+
+# Datos GeoJSON cacheados (se regeneran)
+webapp/static/data/*.geojson
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+*.egg-info/
+dist/
+build/
+
+# Anaconda
+.conda/
+envs/
+
+# Windows
+Thumbs.db
+desktop.ini
