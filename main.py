@@ -23,7 +23,6 @@ import sqlite3
 import sys
 import threading
 import time
-import webbrowser
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -308,19 +307,9 @@ def main():
     flask_thread = threading.Thread(target=run_flask, name="FlaskThread", daemon=True)
     flask_thread.start()
 
-    # 5. Esperar un momento y abrir el navegador
-    time.sleep(2)
+    # 5. En la nube no se abre navegador
     url = f"http://localhost:{cfg.FLASK_PORT}"
-    logger.info(f"Abriendo geoportal en navegador: {url}")
-    try:
-        webbrowser.open(url)
-    except Exception:
-        logger.info(f"Abra manualmente su navegador en: {url}")
-
-    logger.info("=" * 60)
-    logger.info("  GEOPORTAL ACTIVO — Ctrl+C para detener")
-    logger.info(f"  URL: {url}")
-    logger.info("=" * 60)
+    logger.info(f"Geoportal disponible en: {url}")
 
     # 6. Mantener el proceso vivo
     try:
