@@ -167,8 +167,34 @@ var map = L.map('map', {center: [-1.83, -78.18], zoom: 7});
 // Mapa base sin tiles externos - fondo gris con bordes
 map.getContainer().style.background = '#2d3436';
 
-var SIMPLE = L.tileLayer(
+// Fondo de color para cuando no hay tiles
+map.getContainer().style.background = '#1a3a5c';
+
+// Intentar múltiples proveedores de tiles
+var tilesOK = false;
+var providers = [
   'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+  'https://tile.openstreetmap.de/{z}/{x}/{y}.png',
+  'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png'
+];
+
+var baseLayer = L.tileLayer(providers[0], {
+  attribution: 'CartoDB',
+  maxZoom: 18,
+  subdomains: 'abcd',
+  errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+});
+baseLayer.addTo(map);
+
+var SAT = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  {attribution:'Esri', maxZoom:18}
+);
+
+L.control.layers(
+  {'Mapa':baseLayer,'Satelite':SAT},
+  {},{position:'topright',collapsed:true}
+).addTo(map);
   {attribution:'CartoDB', maxZoom:18, subdomains:'abcd'}
 );
 var DARK = L.tileLayer(
@@ -240,7 +266,7 @@ function clsf(m){
   return 'Micro - Imperceptible';
 }
 
-async function loadS(){
+function loadS(){
   try{
     var r=await fetch('/api/sismos?hours='+curH+'&min_mag=2.5');
     var d=await r.json();
@@ -249,7 +275,7 @@ async function loadS(){
   }catch(e){console.error('loadS:',e);}
 }
 
-async function loadV(){
+function loadV(){
   try{
     var r=await fetch('/api/volcanes');
     var d=await r.json();
@@ -271,7 +297,7 @@ async function loadV(){
   }catch(e){}
 }
 
-async function loadStats(){
+function loadStats(){
   try{
     var r=await fetch('/api/stats');
     var s=await r.json();
@@ -287,7 +313,7 @@ async function loadStats(){
   }catch(e){}
 }
 
-async function loadAlertas(){
+function loadAlertas(){
   try{
     var r=await fetch('/api/alertas');
     var d=await r.json();
@@ -501,7 +527,7 @@ function togL(n){
   }
 }
 
-async function checkT(){
+function checkT(){
   var btn=document.getElementById('bt');
   var res=document.getElementById('tr');
   btn.textContent='Consultando...';
@@ -519,7 +545,7 @@ async function checkT(){
 function doSearch(q){
   if(q.length<3)return;
   clearTimeout(window._st);
-  window._st=setTimeout(async function(){
+  window._st=setTimeout(function(){
     try{
       var r=await fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q+', Ecuador')+'&format=json&limit=1',{headers:{'User-Agent':'RiesgoEC/1.0'}});
       var d=await r.json();
@@ -529,7 +555,7 @@ function doSearch(q){
 }
 
 function startR(){
-  setInterval(async function(){
+  setInterval(function(){
     cdown--;
     document.getElementById('cd').textContent=cdown;
     if(cdown<=0){
