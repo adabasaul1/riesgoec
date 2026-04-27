@@ -1,821 +1,528 @@
 <!DOCTYPE html>
 <html lang="es-EC">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RiesgoEC — Mapa Sísmico Ecuador | Desde 1960 | Tiempo Real</title>
-  <meta name="description" content="Mapa interactivo de todos los sismos de Ecuador desde 1960 hasta hoy. Filtros por magnitud, año y profundidad. Datos IGEPN y USGS en tiempo real.">
-  <meta name="keywords" content="sismos ecuador, terremoto ecuador, mapa sismico ecuador, catalogo sismico, igepn, usgs, riesgos naturales ecuador">
-  <link rel="canonical" href="https://riesgoec.onrender.com/">
-  <meta property="og:title" content="RiesgoEC — Mapa Sísmico Ecuador">
-  <meta property="og:description" content="Todos los sismos de Ecuador desde 1960. Filtros por magnitud y año. Actualización en tiempo real.">
-  <meta property="og:url" content="https://riesgoec.onrender.com/">
-
-  <!-- Leaflet.js -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-  <!-- Leaflet Heat -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
-  <!-- Leaflet MarkerCluster -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
-  <!-- Chart.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-
-  <style>
-    :root {
-      --bg:      #0d1117;
-      --panel:   #161b22;
-      --card:    #1f2937;
-      --border:  #30363d;
-      --text:    #e6edf3;
-      --muted:   #8b949e;
-      --red:     #ff4444;
-      --orange:  #ff8c00;
-      --yellow:  #ffd700;
-      --green:   #00cc44;
-      --blue:    #378add;
-      --purple:  #a855f7;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-           background: var(--bg); color: var(--text); height: 100vh;
-           display: flex; flex-direction: column; overflow: hidden; }
-
-    /* ALERTA BANNER */
-    #alert-bar { display:none; padding:8px 16px; font-size:13px; font-weight:600;
-                 text-align:center; animation: blink 1.5s infinite; }
-    #alert-bar.tsunami { background:var(--red); color:#fff; display:block; }
-    #alert-bar.volcán  { background:var(--orange); color:#fff; display:block; }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.75} }
-
-    /* LAYOUT */
-    #layout { display:flex; flex:1; overflow:hidden; }
-
-    /* SIDEBAR */
-    #sidebar { width:290px; background:var(--panel); border-right:1px solid var(--border);
-               display:flex; flex-direction:column; overflow-y:auto; flex-shrink:0; }
-
-    .s-head { padding:14px 16px; border-bottom:1px solid var(--border); }
-    .s-head h1 { font-size:17px; font-weight:700; }
-    .s-head .sub { font-size:11px; color:var(--muted); margin-top:2px; }
-    #update-info { font-size:11px; color:var(--green); margin-top:4px; }
-
-    .sec { padding:10px 14px; border-bottom:1px solid var(--border); }
-    .sec-title { font-size:10px; font-weight:600; color:var(--muted);
-                 text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
-
-    /* Botón temblando */
-    #btn-temblando { width:100%; padding:10px; background:var(--red); color:#fff;
-                     border:none; border-radius:8px; font-size:14px; font-weight:700;
-                     cursor:pointer; transition:opacity .2s; }
-    #btn-temblando:hover { opacity:.88; }
-    #temblando-res { margin-top:6px; padding:8px; background:var(--card);
-                     border-radius:6px; font-size:12px; display:none;
-                     border-left:3px solid var(--red); }
-
-    /* Filtro magnitud por rango */
-    .mag-filters { display:flex; flex-wrap:wrap; gap:4px; }
-    .mag-btn { padding:5px 8px; border-radius:5px; border:1px solid var(--border);
-               background:var(--card); color:var(--muted); font-size:11px;
-               cursor:pointer; transition:all .15s; font-weight:500; }
-    .mag-btn.active { color:#fff; border-color:transparent; }
-    .mag-btn[data-range="all"]   { }
-    .mag-btn[data-range="2-3"].active  { background:#555; }
-    .mag-btn[data-range="3-4"].active  { background:#FFCC00; color:#000; }
-    .mag-btn[data-range="4-5"].active  { background:#FF6600; }
-    .mag-btn[data-range="5-6"].active  { background:#FF0000; }
-    .mag-btn[data-range="6+"].active   { background:#8B0000; }
-    .mag-btn[data-range="all"].active  { background:var(--blue); }
-
-    /* Filtro año */
-    .year-row { display:flex; align-items:center; gap:8px; margin-top:6px; }
-    .year-row label { font-size:11px; color:var(--muted); min-width:40px; }
-    .year-row input[type=range] { flex:1; accent-color:var(--blue); }
-    .year-val { font-size:12px; color:var(--blue); font-weight:600; min-width:36px; text-align:right; }
-
-    /* Filtro tiempo reciente */
-    .time-btns { display:flex; gap:4px; flex-wrap:wrap; }
-    .time-btn { flex:1; min-width:36px; padding:5px 4px; text-align:center;
-                background:var(--card); border:1px solid var(--border);
-                border-radius:5px; font-size:11px; color:var(--muted); cursor:pointer; }
-    .time-btn.active { background:var(--blue); border-color:var(--blue); color:#fff; }
-
-    /* Capas toggle */
-    .layer-row { display:flex; align-items:center; justify-content:space-between;
-                 padding:6px 0; cursor:pointer; }
-    .layer-dot { width:10px; height:10px; border-radius:50%; margin-right:8px; flex-shrink:0; }
-    .layer-name { font-size:12px; color:var(--text); flex:1; }
-    .tog { position:relative; width:32px; height:18px; flex-shrink:0; }
-    .tog input { opacity:0; width:0; height:0; }
-    .tog .sl { position:absolute; inset:0; background:var(--border);
-               border-radius:9px; transition:.2s; cursor:pointer; }
-    .tog .sl::before { content:''; position:absolute; width:14px; height:14px;
-                       left:2px; bottom:2px; background:#fff; border-radius:50%; transition:.2s; }
-    .tog input:checked + .sl { background:var(--blue); }
-    .tog input:checked + .sl::before { transform:translateX(14px); }
-
-    /* Búsqueda */
-    #search-inp { width:100%; padding:7px 10px; background:var(--card);
-                  border:1px solid var(--border); border-radius:6px;
-                  color:var(--text); font-size:12px; outline:none; }
-    #search-inp:focus { border-color:var(--blue); }
-
-    /* Lista eventos */
-    #events-list { list-style:none; }
-    .ev-item { padding:6px 0; border-bottom:1px solid var(--border);
-               cursor:pointer; display:flex; align-items:center; gap:8px; }
-    .ev-item:hover { background:var(--card); padding-left:4px; border-radius:4px; }
-    .ev-mag { font-size:15px; font-weight:700; min-width:38px; }
-    .ev-info { font-size:11px; color:var(--muted); line-height:1.4; }
-
-    /* MAPA */
-    #map { flex:1; }
-
-    /* PANEL DERECHO */
-    #stats { width:230px; background:var(--panel); border-left:1px solid var(--border);
-             display:flex; flex-direction:column; overflow-y:auto; padding:12px; flex-shrink:0; }
-    .stat-card { background:var(--card); border-radius:8px; padding:10px;
-                 margin-bottom:8px; text-align:center; }
-    .stat-label { font-size:10px; color:var(--muted); text-transform:uppercase;
-                  letter-spacing:.8px; margin-bottom:3px; }
-    .stat-value { font-size:24px; font-weight:700; }
-    .stat-sub { font-size:11px; color:var(--muted); margin-top:2px; }
-
-    .chart-box { background:var(--card); border-radius:8px; padding:10px; margin-bottom:8px; }
-    .chart-title { font-size:10px; color:var(--muted); text-transform:uppercase;
-                   letter-spacing:.8px; margin-bottom:8px; }
-
-    /* Leyenda */
-    .leg-row { display:flex; align-items:center; gap:6px; margin-bottom:5px; font-size:11px; }
-    .leg-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
-
-    /* POPUP */
-    .leaflet-popup-content-wrapper {
-      background:var(--panel) !important; color:var(--text) !important;
-      border:1px solid var(--border) !important; border-radius:10px !important;
-      min-width:230px; max-width:280px;
-    }
-    .leaflet-popup-tip { background:var(--panel) !important; }
-    .pop-mag { font-size:28px; font-weight:800; }
-    .pop-row { display:flex; justify-content:space-between; font-size:12px;
-               padding:3px 0; border-bottom:1px solid var(--border); }
-    .pop-lbl { color:var(--muted); }
-    .share-row { display:flex; gap:6px; margin-top:10px; }
-    .share-btn { flex:1; padding:6px; border:none; border-radius:6px;
-                 color:#fff; font-size:11px; font-weight:600; cursor:pointer; text-decoration:none;
-                 text-align:center; display:block; }
-
-    @media(max-width:768px) { #sidebar, #stats { display:none; } }
-
-    /* Contador de sismos visible */
-    #sismo-counter {
-      position:absolute; bottom:30px; left:50%; transform:translateX(-50%);
-      background:rgba(22,27,34,0.92); border:1px solid var(--border);
-      border-radius:20px; padding:6px 16px; font-size:12px; color:var(--text);
-      z-index:1000; pointer-events:none; white-space:nowrap;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RiesgoEC — Mapa Sismico Ecuador 1960-2025</title>
+<meta name="description" content="Catalogo sismico interactivo de Ecuador desde 1960. Mas de 2900 sismos historicos. IGEPN y USGS tiempo real.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d1117;color:#e6edf3;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#ab{display:none;padding:8px;font-size:13px;font-weight:600;text-align:center;background:#ff4444;color:#fff}
+#ab.on{display:block}
+#ly{display:flex;flex:1;overflow:hidden}
+#sb{width:265px;background:#161b22;border-right:1px solid #30363d;display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
+.sh{padding:11px 13px;border-bottom:1px solid #30363d}
+.sh h1{font-size:15px;font-weight:700}
+.sub{font-size:11px;color:#8b949e;margin-top:1px}
+#ud{font-size:11px;color:#00cc44;margin-top:2px}
+.sc{padding:8px 12px;border-bottom:1px solid #30363d}
+.st{font-size:10px;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+#bt{width:100%;padding:9px;background:#ff4444;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer}
+#tr{margin-top:5px;padding:6px;background:#1f2937;border-radius:4px;font-size:12px;display:none;border-left:3px solid #ff4444}
+.mf{display:flex;flex-wrap:wrap;gap:3px}
+.mb{padding:4px 7px;border-radius:4px;border:1px solid #30363d;background:#1f2937;color:#8b949e;font-size:11px;cursor:pointer;font-weight:500}
+.mb.on{color:#fff;border-color:transparent}
+.mb[data-r=all].on{background:#378add}
+.mb[data-r="4-5"].on{background:#FF6600}
+.mb[data-r="5-6"].on{background:#FF0000}
+.mb[data-r="6-7"].on{background:#8B0000}
+.mb[data-r="7+"].on{background:#4a0000}
+.yr{display:flex;align-items:center;gap:6px;margin-top:4px}
+.yr label{font-size:11px;color:#8b949e;min-width:35px}
+.yr input{flex:1;accent-color:#378add}
+.yv{font-size:12px;color:#378add;font-weight:600;min-width:32px;text-align:right}
+.tb{display:flex;gap:3px;flex-wrap:wrap}
+.tb span{flex:1;min-width:28px;padding:4px 2px;text-align:center;background:#1f2937;border:1px solid #30363d;border-radius:4px;font-size:11px;color:#8b949e;cursor:pointer}
+.tb span.on{background:#378add;border-color:#378add;color:#fff}
+.lr{display:flex;align-items:center;justify-content:space-between;padding:4px 0;cursor:pointer}
+.ld{width:9px;height:9px;border-radius:50%;margin-right:7px;flex-shrink:0}
+.ln{font-size:12px;flex:1}
+.tg{position:relative;width:28px;height:16px;flex-shrink:0}
+.tg input{opacity:0;width:0;height:0}
+.tg .sl{position:absolute;inset:0;background:#30363d;border-radius:8px;transition:.2s;cursor:pointer}
+.tg .sl::before{content:'';position:absolute;width:12px;height:12px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:.2s}
+.tg input:checked+.sl{background:#378add}
+.tg input:checked+.sl::before{transform:translateX(12px)}
+#si{width:100%;padding:6px 8px;background:#1f2937;border:1px solid #30363d;border-radius:4px;color:#e6edf3;font-size:12px;outline:none}
+#si:focus{border-color:#378add}
+#el{list-style:none}
+.ei{padding:5px 0;border-bottom:1px solid #30363d;cursor:pointer;display:flex;align-items:center;gap:6px}
+.em{font-size:13px;font-weight:700;min-width:35px}
+.ed{font-size:11px;color:#8b949e;line-height:1.4}
+#map{flex:1}
+#sp{width:215px;background:#161b22;border-left:1px solid #30363d;display:flex;flex-direction:column;overflow-y:auto;padding:8px;flex-shrink:0}
+.sk{background:#1f2937;border-radius:6px;padding:8px;margin-bottom:6px;text-align:center}
+.sl2{font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px}
+.sv{font-size:20px;font-weight:700}
+.ss2{font-size:10px;color:#8b949e;margin-top:1px}
+.cb2{background:#1f2937;border-radius:6px;padding:8px;margin-bottom:6px}
+.ct{font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px}
+.lg2{display:flex;align-items:center;gap:5px;margin-bottom:3px;font-size:11px}
+.ld2{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+#ctr{position:absolute;bottom:25px;left:50%;transform:translateX(-50%);background:rgba(22,27,34,.93);border:1px solid #30363d;border-radius:16px;padding:4px 12px;font-size:12px;z-index:1000;pointer-events:none;white-space:nowrap}
+.leaflet-popup-content-wrapper{background:#161b22!important;color:#e6edf3!important;border:1px solid #30363d!important;border-radius:8px!important;min-width:210px}
+.leaflet-popup-tip{background:#161b22!important}
+.pr{font-size:24px;font-weight:800}
+.rw{display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid #30363d}
+.rl{color:#8b949e}
+.sw{display:flex;gap:4px;margin-top:8px}
+.sw a{flex:1;padding:5px;border:none;border-radius:4px;color:#fff;font-size:11px;font-weight:600;text-align:center;display:block;text-decoration:none}
+@media(max-width:768px){#sb,#sp{display:none}}
+</style>
 </head>
 <body>
-
-<div id="alert-bar"></div>
-
-<div id="layout">
-
-  <!-- ═══ SIDEBAR IZQUIERDO ═══ -->
-  <div id="sidebar">
-    <div class="s-head">
-      <h1>🌎 RiesgoEC</h1>
-      <div class="sub">Catálogo Sísmico Ecuador — Tiempo Real</div>
-      <div id="update-info">Actualizando en <span id="countdown">30</span>s</div>
-    </div>
-
-    <!-- Temblando -->
-    <div class="sec">
-      <button id="btn-temblando" onclick="checkTemblando()">🔴 ¿ESTÁ TEMBLANDO AHORA?</button>
-      <div id="temblando-res"></div>
-    </div>
-
-    <!-- Búsqueda -->
-    <div class="sec">
-      <div class="sec-title">Buscar ubicación</div>
-      <input id="search-inp" type="text" placeholder="Ciudad, barrio o coordenadas..."
-             oninput="searchLocation(this.value)">
-    </div>
-
-    <!-- FILTRO POR MAGNITUD -->
-    <div class="sec">
-      <div class="sec-title">Filtrar por magnitud</div>
-      <div class="mag-filters">
-        <button class="mag-btn active" data-range="all" onclick="setMagRange('all',this)">Todos</button>
-        <button class="mag-btn" data-range="2-3" onclick="setMagRange('2-3',this)" style="color:#888">M 2–3</button>
-        <button class="mag-btn" data-range="3-4" onclick="setMagRange('3-4',this)" style="color:#FFCC00">M 3–4</button>
-        <button class="mag-btn" data-range="4-5" onclick="setMagRange('4-5',this)" style="color:#FF6600">M 4–5</button>
-        <button class="mag-btn" data-range="5-6" onclick="setMagRange('5-6',this)" style="color:#FF0000">M 5–6</button>
-        <button class="mag-btn" data-range="6+" onclick="setMagRange('6+',this)"  style="color:#ff6b6b">M 6+</button>
-      </div>
-    </div>
-
-    <!-- FILTRO POR AÑO -->
-    <div class="sec">
-      <div class="sec-title">Filtrar por período</div>
-      <div class="year-row">
-        <label>Desde</label>
-        <input type="range" id="year-from" min="1960" max="2025" value="1960"
-               oninput="updateYearFilter()">
-        <span class="year-val" id="year-from-val">1960</span>
-      </div>
-      <div class="year-row">
-        <label>Hasta</label>
-        <input type="range" id="year-to" min="1960" max="2025" value="2025"
-               oninput="updateYearFilter()">
-        <span class="year-val" id="year-to-val">2025</span>
-      </div>
-    </div>
-
-    <!-- FILTRO TIEMPO RECIENTE -->
-    <div class="sec">
-      <div class="sec-title">Sismos recientes</div>
-      <div class="time-btns">
-        <div class="time-btn" onclick="setHours(1,this)">1h</div>
-        <div class="time-btn" onclick="setHours(6,this)">6h</div>
-        <div class="time-btn active" onclick="setHours(24,this)">24h</div>
-        <div class="time-btn" onclick="setHours(168,this)">7d</div>
-        <div class="time-btn" onclick="setHours(720,this)">30d</div>
-        <div class="time-btn" onclick="setHours(999999,this)">TODO</div>
-      </div>
-    </div>
-
-  <!-- CAPAS -->
-<div class="sec">
-  <div class="sec-title">Capas del mapa</div>
-  <div class="layer-row" onclick="toggleLayer('sismos')">
-    <div class="layer-dot" style="background:#FF6600"></div>
-    <span class="layer-name">Sismos</span>
-    <label class="tog"><input type="checkbox" id="tog-sismos" checked><span class="sl"></span></label>
+<div id="ab"></div>
+<div id="ly">
+<div id="sb">
+  <div class="sh">
+    <h1>🌎 RiesgoEC</h1>
+    <div class="sub">Catalogo Sismico Ecuador 1960-2025</div>
+    <div id="ud">Actualiz. en <span id="cd">30</span>s</div>
   </div>
-  <div class="layer-row" onclick="toggleLayer('volcanes')">
-    <div class="layer-dot" style="background:#EF9F27"></div>
-    <span class="layer-name">Volcanes</span>
-    <label class="tog"><input type="checkbox" id="tog-volcanes" checked><span class="sl"></span></label>
+  <div class="sc">
+    <button id="bt" onclick="checkT()">🔴 ESTA TEMBLANDO AHORA?</button>
+    <div id="tr"></div>
   </div>
-  <div class="layer-row" onclick="toggleLayer('heatmap')">
-    <div class="layer-dot" style="background:#FF0000"></div>
-    <span class="layer-name">Mapa de calor</span>
-    <label class="tog"><input type="checkbox" id="tog-heatmap"><span class="sl"></span></label>
+  <div class="sc">
+    <div class="st">Buscar ubicacion</div>
+    <input id="si" type="text" placeholder="Ciudad en Ecuador..." oninput="doSearch(this.value)">
   </div>
-  <div class="layer-row" onclick="toggleLayer('placas')">
-    <div class="layer-dot" style="background:#a855f7"></div>
-    <span class="layer-name">Placas tectónicas</span>
-    <label class="tog"><input type="checkbox" id="tog-placas"><span class="sl"></span></label>
+  <div class="sc">
+    <div class="st">Magnitud (Escala Mw - USGS)</div>
+    <div class="mf">
+      <button class="mb on" data-r="all" onclick="setMag('all',this)">Todos</button>
+      <button class="mb" data-r="4-5" onclick="setMag('4-5',this)" style="color:#FF6600">M4-5 Ligero</button>
+      <button class="mb" data-r="5-6" onclick="setMag('5-6',this)" style="color:#FF0000">M5-6 Moderado</button>
+      <button class="mb" data-r="6-7" onclick="setMag('6-7',this)" style="color:#ff6b6b">M6-7 Fuerte</button>
+      <button class="mb" data-r="7+" onclick="setMag('7+',this)" style="color:#ff9999">M7+ Mayor</button>
+    </div>
   </div>
-  <div class="layer-row" onclick="toggleLayer('provincias')">
-    <div class="layer-dot" style="background:#00cc44"></div>
-    <span class="layer-name">Provincias</span>
-    <label class="tog"><input type="checkbox" id="tog-provincias"><span class="sl"></span></label>
+  <div class="sc">
+    <div class="st">Periodo historico</div>
+    <div class="yr"><label>Desde</label><input type="range" id="yf" min="1960" max="2025" value="1960" oninput="setYr()"><span class="yv" id="yfv">1960</span></div>
+    <div class="yr"><label>Hasta</label><input type="range" id="yt" min="1960" max="2025" value="2025" oninput="setYr()"><span class="yv" id="ytv">2025</span></div>
   </div>
-  <div class="layer-row" onclick="toggleLayer('cantones')">
-    <div class="layer-dot" style="background:#378add"></div>
-    <span class="layer-name">Cantones</span>
-    <label class="tog"><input type="checkbox" id="tog-cantones"><span class="sl"></span></label>
+  <div class="sc">
+    <div class="st">Periodo reciente</div>
+    <div class="tb">
+      <span onclick="setH(1,this)">1h</span>
+      <span onclick="setH(6,this)">6h</span>
+      <span onclick="setH(24,this)">24h</span>
+      <span onclick="setH(168,this)">7d</span>
+      <span onclick="setH(720,this)">30d</span>
+      <span class="on" onclick="setH(999999,this)">TODO</span>
+    </div>
   </div>
-  <div class="layer-row" onclick="toggleLayer('parroquias')">
-    <div class="layer-dot" style="background:#ffd700"></div>
-    <span class="layer-name">Parroquias</span>
-    <label class="tog"><input type="checkbox" id="tog-parroquias"><span class="sl"></span></label>
+  <div class="sc">
+    <div class="st">Capas</div>
+    <div class="lr" onclick="togL('sismos')"><div class="ld" style="background:#FF6600"></div><span class="ln">Sismos</span><label class="tg"><input type="checkbox" id="tg-sismos" checked><span class="sl"></span></label></div>
+    <div class="lr" onclick="togL('volcanes')"><div class="ld" style="background:#EF9F27"></div><span class="ln">Volcanes</span><label class="tg"><input type="checkbox" id="tg-volcanes" checked><span class="sl"></span></label></div>
+    <div class="lr" onclick="togL('heat')"><div class="ld" style="background:#FF0000"></div><span class="ln">Mapa de calor</span><label class="tg"><input type="checkbox" id="tg-heat"><span class="sl"></span></label></div>
+    <div class="lr" onclick="togL('placas')"><div class="ld" style="background:#a855f7"></div><span class="ln">Placas tectonicas</span><label class="tg"><input type="checkbox" id="tg-placas"><span class="sl"></span></label></div>
+    <div class="lr" onclick="togL('prov')"><div class="ld" style="background:#00cc44"></div><span class="ln">Provincias</span><label class="tg"><input type="checkbox" id="tg-prov"><span class="sl"></span></label></div>
+    <div class="lr" onclick="togL('cant')"><div class="ld" style="background:#378add"></div><span class="ln">Cantones</span><label class="tg"><input type="checkbox" id="tg-cant"><span class="sl"></span></label></div>
+    <div class="lr" onclick="togL('parr')"><div class="ld" style="background:#ffd700"></div><span class="ln">Parroquias</span><label class="tg"><input type="checkbox" id="tg-parr"><span class="sl"></span></label></div>
+  </div>
+  <div class="sc" style="flex:1">
+    <div class="st">Ultimos eventos</div>
+    <ul id="el"></ul>
   </div>
 </div>
-
-    <!-- ÚLTIMOS EVENTOS -->
-    <div class="sec" style="flex:1">
-      <div class="sec-title">Últimos eventos</div>
-      <ul id="events-list"></ul>
-    </div>
+<div style="position:relative;flex:1">
+  <div id="map"></div>
+  <div id="ctr">Cargando...</div>
+</div>
+<div id="sp">
+  <div class="sk"><div class="sl2">Sismos 24h</div><div class="sv" id="sc1">0</div></div>
+  <div class="sk"><div class="sl2">Max magnitud hoy</div><div class="sv" id="sc2">-</div><div class="ss2">Mw</div></div>
+  <div class="sk"><div class="sl2">Total visible</div><div class="sv" id="sc3">0</div><div class="ss2">sismos</div></div>
+  <div class="sk"><div class="sl2">Volcan activo</div><div id="sv1" style="font-size:12px;font-weight:600;margin-bottom:2px">-</div><div id="sv2"></div></div>
+  <div class="sk"><div class="sl2">Alerta tsunami</div><div id="sts" style="font-size:12px;font-weight:600;color:#00cc44">Sin amenaza</div></div>
+  <div class="cb2"><div class="ct">Sismos por hora 24h</div><canvas id="ch1" height="90"></canvas></div>
+  <div class="cb2"><div class="ct">Sismos por decada</div><canvas id="ch2" height="90"></canvas></div>
+  <div class="cb2">
+    <div class="ct">Leyenda Mw (USGS)</div>
+    <div class="lg2"><div class="ld2" style="background:#4a0000"></div>M7+ Mayor - Destruccion</div>
+    <div class="lg2"><div class="ld2" style="background:#8B0000"></div>M6-7 Fuerte - Dano estructural</div>
+    <div class="lg2"><div class="ld2" style="background:#FF0000"></div>M5-6 Moderado - Sentido amplio</div>
+    <div class="lg2"><div class="ld2" style="background:#FF6600"></div>M4-5 Ligero - Notado interior</div>
+    <div class="lg2"><div class="ld2" style="background:#FFCC00"></div>M3-4 Menor - Pocas personas</div>
+    <div class="lg2"><div class="ld2" style="background:#AAAAAA"></div>M-3 Micro - Imperceptible</div>
+    <div style="margin-top:6px;font-size:10px;color:#8b949e;text-align:center">IGEPN - USGS - PTWC - SGR<br><a href="https://igepn.edu.ec" target="_blank" style="color:#378add">igepn.edu.ec</a></div>
   </div>
-
-  <!-- ═══ MAPA ═══ -->
-  <div style="position:relative;flex:1">
-    <div id="map"></div>
-    <div id="sismo-counter">Cargando datos...</div>
-  </div>
-
-  <!-- ═══ PANEL DERECHO ═══ -->
-  <div id="stats">
-    <div class="stat-card">
-      <div class="stat-label">Sismos (24h)</div>
-      <div class="stat-value" id="st-count">—</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Máx. magnitud hoy</div>
-      <div class="stat-value" id="st-max">—</div>
-      <div class="stat-sub">escala Richter</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Total en mapa</div>
-      <div class="stat-value" id="st-total">—</div>
-      <div class="stat-sub">sismos visibles</div>
-    </div>
-    <div class="stat-card" id="st-volcán-card">
-      <div class="stat-label">Volcán activo</div>
-      <div id="st-volcán-nom" style="font-size:14px;font-weight:600;margin-bottom:4px">—</div>
-      <div id="st-volcán-niv"></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Alerta tsunami</div>
-      <div id="st-tsunami" style="font-size:12px;font-weight:600;color:var(--green)">Sin amenaza</div>
-    </div>
-
-    <div class="chart-box">
-      <div class="chart-title">Sismos por magnitud</div>
-      <canvas id="mag-chart" height="120"></canvas>
-    </div>
-
-    <div class="chart-box">
-      <div class="chart-title">Sismos por década</div>
-      <canvas id="decade-chart" height="120"></canvas>
-    </div>
-
-    <!-- LEYENDA -->
-    <div style="margin-top:4px">
-      <div class="sec-title" style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Leyenda magnitud</div>
-      <div class="leg-row"><div class="leg-dot" style="background:#8B0000"></div> M ≥ 6.0 — Fuerte/Grande</div>
-      <div class="leg-row"><div class="leg-dot" style="background:#FF0000"></div> M 5.0–5.9 — Moderado/Fuerte</div>
-      <div class="leg-row"><div class="leg-dot" style="background:#FF6600"></div> M 4.0–4.9 — Moderado</div>
-      <div class="leg-row"><div class="leg-dot" style="background:#FFCC00"></div> M 3.0–3.9 — Leve</div>
-      <div class="leg-row"><div class="leg-dot" style="background:#AAAAAA"></div> M &lt; 3.0 — Micro</div>
-      <div style="margin-top:8px;font-size:10px;color:var(--muted);text-align:center">
-        Fuentes: IGEPN · USGS · PTWC · SGR<br>
-        Datos desde 1960 · Actualización: 5 min<br>
-        <a href="https://igepn.edu.ec" target="_blank" style="color:var(--blue)">igepn.edu.ec</a>
-      </div>
-    </div>
-  </div>
-
-</div><!-- /layout -->
-
+</div>
+</div>
 <script>
-// ══════════════════════════════════════
-// MAPA BASE
-// ══════════════════════════════════════
-const map = L.map('map', { center: [-1.8312, -78.1834], zoom: 7 });
+// MAPA - usar Esri como tile principal (no requiere key, muy confiable)
+var map = L.map('map', {center: [-1.83, -78.18], zoom: 7});
 
-const bases = {
-  'OpenStreetMap': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    { attribution: '© CartoDB', maxZoom: 19 }),
-  'OpenStreetMap': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    { attribution: '© OSM', maxZoom: 19 }),
-  'Satélite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    { attribution: '© Esri', maxZoom: 18 }),
-  'Topográfico': L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-    { attribution: '© OpenTopoMap', maxZoom: 17 }),
-};
-bases['OpenStreetMap'].addTo(map);
-L.control.layers(bases, {}, { position: 'topright', collapsed: true }).addTo(map);
+// Tiles alternativos - Esri es el mas confiable sin API key
+var ESRI = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+  {attribution: 'Tiles by Esri', maxZoom: 18}
+);
+var ESRI_SAT = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  {attribution: 'Tiles by Esri', maxZoom: 18}
+);
+var ESRI_TOPO = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+  {attribution: 'Tiles by Esri', maxZoom: 18}
+);
+var CARTO_DARK = L.tileLayer(
+  'https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
+  {attribution: 'CartoDB', maxZoom: 18}
+);
 
-// Grupos de capas
-const grpSismos   = L.layerGroup().addTo(map);
-const grpVolcanes = L.layerGroup().addTo(map);
-const grpPlacas   = L.layerGroup();
-let   heatLayer   = null;
-const grpProvincias = L.layerGroup();
-const grpCantones   = L.layerGroup();
-const grpParroquias = L.layerGroup();
+ESRI.addTo(map);
+L.control.layers(
+  {'Calles (Esri)':ESRI,'Satelite':ESRI_SAT,'Topografico':ESRI_TOPO,'Oscuro':CARTO_DARK},
+  {},{position:'topright',collapsed:true}
+).addTo(map);
 
-// ══════════════════════════════════════
-// ESTADO GLOBAL
-// ══════════════════════════════════════
-let allSismos  = [];
-let currentMagRange = 'all';
-let currentHours    = 24;
-let yearFrom = 1960, yearTo = 2025;
-let modoHistorico   = false;
-let chartMag = null, chartDecade = null;
-let countdown = 30;
+var gS=L.layerGroup().addTo(map);
+var gV=L.layerGroup().addTo(map);
+var gP=L.layerGroup();
+var gPr=L.layerGroup();
+var gCa=L.layerGroup();
+var gPa=L.layerGroup();
+var htl=null;
+var allD=[],curMag='all',curH=999999,yF=1960,yT=2025,cdown=30;
+var ch1=null,ch2=null;
 
-// ══════════════════════════════════════
-// PLACAS TECTÓNICAS (GeoJSON externo)
-// ══════════════════════════════════════
-const PLACAS_URL = 'https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_boundaries.json';
-let placasData = null;
+function col(m){
+  if(m>=7)return '#4a0000';
+  if(m>=6)return '#8B0000';
+  if(m>=5)return '#FF0000';
+  if(m>=4)return '#FF6600';
+  if(m>=3)return '#FFCC00';
+  return '#AAAAAA';
+}
+function rad(m){return Math.max(4, m*m*0.7);}
 
-async function loadPlacas() {
-  if (placasData) return;
-  try {
-    const resp = await fetch(PLACAS_URL);
-    placasData = await resp.json();
-  } catch(e) {
-    console.warn('Placas tectónicas no disponibles:', e);
-  }
+function clsf(m){
+  if(m>=7)return 'Mayor - Destruccion extensa';
+  if(m>=6)return 'Fuerte - Dano estructural';
+  if(m>=5)return 'Moderado - Sentido ampliamente';
+  if(m>=4)return 'Ligero - Notado en interiores';
+  if(m>=3)return 'Menor - Pocas personas lo sienten';
+  return 'Micro - Imperceptible';
 }
 
-function renderPlacas() {
-  grpPlacas.clearLayers();
-  if (!placasData) return;
-  L.geoJSON(placasData, {
-    style: { color: '#a855f7', weight: 2, opacity: 0.7, dashArray: '6 4' }
-  }).addTo(grpPlacas);
+async function loadS(){
+  try{
+    var r=await fetch('/api/sismos?hours='+curH+'&min_mag=2.5');
+    var d=await r.json();
+    allD=d.features||[];
+    render();
+  }catch(e){console.error('loadS:',e);}
 }
 
-// ══════════════════════════════════════
-// CARGA DE DATOS
-// ══════════════════════════════════════
-async function loadSismos() {
-  try {
-    let url;
-    if (modoHistorico) {
-      // Modo histórico: pedir todos los datos con filtro de año
-      url = `/api/sismos?hours=999999&min_mag=2.5`;
-    } else {
-      url = `/api/sismos?hours=${currentHours}&min_mag=2.5`;
+async function loadV(){
+  try{
+    var r=await fetch('/api/volcanes');
+    var d=await r.json();
+    gV.clearLayers();
+    var vc={'ROJO':'#FF0000','NARANJA':'#FF6600','AMARILLO':'#FFCC00','VERDE':'#00CC44','SIN_DATO':'#888888'};
+    (d.features||[]).forEach(function(f){
+      var p=f.properties;
+      var c=vc[p.nivel]||'#888888';
+      var ic=L.divIcon({
+        html:'<div style="width:14px;height:14px;background:'+c+';border-radius:50% 50% 0 50%;transform:rotate(45deg);border:2px solid #fff;box-shadow:0 0 4px '+c+'"></div>',
+        className:'',iconSize:[14,14]
+      });
+      var lat=f.geometry.coordinates[1];
+      var lon=f.geometry.coordinates[0];
+      L.marker([lat,lon],{icon:ic})
+        .bindPopup('<b style="font-size:14px;color:'+c+'">🌋 '+p.nombre+'</b><br>Nivel IGEPN: <b>'+p.nivel+'</b><br><a href="'+(p.boletin_url||'https://igepn.edu.ec')+'" target="_blank" style="color:#378add">Ver boletin →</a>')
+        .addTo(gV);
+    });
+  }catch(e){}
+}
+
+async function loadStats(){
+  try{
+    var r=await fetch('/api/stats');
+    var s=await r.json();
+    document.getElementById('sc1').textContent=s.sismos_24h||0;
+    document.getElementById('sc2').textContent=s.max_magnitud>0?'Mw'+s.max_magnitud:'-';
+    var va=s['volcán_activo']||s.volcán_activo;
+    if(va){
+      document.getElementById('sv1').textContent=va.nombre||'';
+      var nc={'ROJO':'#ff4444','NARANJA':'#ff8c00','AMARILLO':'#ffd700','VERDE':'#00cc44'}[va.nivel]||'#888';
+      document.getElementById('sv2').innerHTML='<span style="background:'+nc+'33;color:'+nc+';border:1px solid '+nc+';padding:1px 8px;border-radius:99px;font-size:10px">'+va.nivel+'</span>';
     }
-    const resp = await fetch(url);
-    const data = await resp.json();
-    allSismos = data.features || [];
-    applyFiltersAndRender();
-  } catch(e) { console.error('Error cargando sismos:', e); }
+    upCh1(s.sismos_x_hora||{});
+  }catch(e){}
 }
 
-async function loadVolcanes() {
-  try {
-    const resp = await fetch('/api/volcanes');
-    const data = await resp.json();
-    renderVolcanes(data.features || []);
-  } catch(e) {}
+async function loadAlertas(){
+  try{
+    var r=await fetch('/api/alertas');
+    var d=await r.json();
+    var b=document.getElementById('ab');
+    if(d.tsunami_activo){b.className='on';b.textContent='ALERTA DE TSUNAMI - Evacue hacia zonas altas';}
+    else{b.className='';b.style.display='none';}
+  }catch(e){}
 }
 
-async function loadStats() {
-  try {
-    const resp = await fetch('/api/stats');
-    const s = await resp.json();
-    document.getElementById('st-count').textContent = s.sismos_24h ?? '—';
-    document.getElementById('st-max').textContent   = s.max_magnitud > 0 ? 'M'+s.max_magnitud : '—';
-    if (s.volcán_activo) {
-      document.getElementById('st-volcán-nom').textContent = s.volcán_activo.nombre;
-      const nv = s.volcán_activo.nivel;
-      const nc = {ROJO:'#ff4444',NARANJA:'#ff8c00',AMARILLO:'#ffd700',VERDE:'#00cc44'}[nv]||'#888';
-      document.getElementById('st-volcán-niv').innerHTML =
-        `<span style="background:${nc}33;color:${nc};border:1px solid ${nc};padding:2px 10px;border-radius:999px;font-size:11px;font-weight:600">${nv}</span>`;
-    }
-    updateMagChart(s.sismos_x_hora||{});
-  } catch(e) {}
+function getFilt(){
+  var f=allD.slice();
+  if(curMag!=='all'){
+    var p=curMag.split('-');
+    var lo=parseFloat(p[0]);
+    var hi=curMag.indexOf('+')>-1?999:parseFloat(p[1]);
+    f=f.filter(function(x){var m=x.properties.magnitud||0;return m>=lo&&m<hi;});
+  }
+  f=f.filter(function(x){
+    var yr=parseInt((x.properties.fecha_utc||'2000').substring(0,4));
+    return yr>=yF&&yr<=yT;
+  });
+  return f;
 }
 
-async function loadAlertas() {
-  try {
-    const resp = await fetch('/api/alertas');
-    const data = await resp.json();
-    const bar  = document.getElementById('alert-bar');
-    if (data.tsunami_activo) {
-      bar.className = 'tsunami';
-      bar.textContent = '🌊 ALERTA DE TSUNAMI ACTIVA — Evacúe hacia zonas altas.';
-    } else { bar.className = ''; bar.style.display = 'none'; }
-  } catch(e) {}
-}
-
-// ══════════════════════════════════════
-// FILTROS
-// ══════════════════════════════════════
-function applyFiltersAndRender() {
-  let filtered = [...allSismos];
-
-  // Filtro magnitud
-  if (currentMagRange !== 'all') {
-    const [minM, maxM] = parseMagRange(currentMagRange);
-    filtered = filtered.filter(f => {
-      const m = f.properties.magnitud || 0;
-      return m >= minM && (maxM === null || m < maxM);
+function render(){
+  var f=getFilt();
+  gS.clearLayers();
+  if(document.getElementById('tg-sismos').checked){
+    f.forEach(function(x){
+      var p=x.properties;
+      var m=parseFloat(p.magnitud)||0;
+      var c=col(m);
+      var lat=x.geometry.coordinates[1];
+      var lon=x.geometry.coordinates[0];
+      var ci=L.circleMarker([lat,lon],{
+        radius:rad(m),fillColor:c,color:'rgba(255,255,255,0.2)',
+        weight:0.5,opacity:1,fillOpacity:m>=5?0.9:0.7
+      });
+      ci.bindPopup(mkPop(p));
+      gS.addLayer(ci);
     });
   }
-
-  // Filtro año (solo si hay datos históricos)
-  if (allSismos.length > 500) {
-    filtered = filtered.filter(f => {
-      const fecha = f.properties.fecha_utc || '';
-      const year  = parseInt(fecha.substring(0, 4));
-      return year >= yearFrom && year <= yearTo;
+  if(htl){map.removeLayer(htl);htl=null;}
+  if(document.getElementById('tg-heat').checked&&f.length>0){
+    var pts=f.map(function(x){
+      return[x.geometry.coordinates[1],x.geometry.coordinates[0],
+             Math.min(1,(parseFloat(x.properties.magnitud)||2.5)/8)];
     });
+    htl=L.heatLayer(pts,{radius:22,blur:18,
+      gradient:{0.2:'blue',0.5:'yellow',0.8:'orange',1:'red'}
+    }).addTo(map);
   }
-
-  renderSismos(filtered);
-  renderHeatmap(filtered);
-  updateDecadeChart(filtered);
-  document.getElementById('st-total').textContent = filtered.length.toLocaleString();
-  document.getElementById('sismo-counter').textContent =
-    `${filtered.length.toLocaleString()} sismos visibles`;
-  renderEventList(filtered);
-}
-
-function parseMagRange(range) {
-  if (range === '6+') return [6, null];
-  const parts = range.split('-');
-  return [parseFloat(parts[0]), parseFloat(parts[1])];
-}
-
-function setMagRange(range, btn) {
-  currentMagRange = range;
-  document.querySelectorAll('.mag-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  applyFiltersAndRender();
-}
-
-function updateYearFilter() {
-  yearFrom = parseInt(document.getElementById('year-from').value);
-  yearTo   = parseInt(document.getElementById('year-to').value);
-  if (yearFrom > yearTo) yearTo = yearFrom;
-  document.getElementById('year-from-val').textContent = yearFrom;
-  document.getElementById('year-to-val').textContent   = yearTo;
-  // Activar modo histórico
-  modoHistorico = true;
-  loadSismos();
-}
-
-function setHours(h, btn) {
-  currentHours  = h;
-  modoHistorico = (h === 999999);
-  document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  loadSismos();
-}
-
-// ══════════════════════════════════════
-// RENDER SISMOS
-// ══════════════════════════════════════
-function renderSismos(features) {
-  grpSismos.clearLayers();
-  if (!document.getElementById('tog-sismos').checked) return;
-
-  features.forEach(f => {
-    const p   = f.properties;
-    const lon = f.geometry.coordinates[0];
-    const lat = f.geometry.coordinates[1];
-    const mag = p.magnitud || 0;
-
-    const circle = L.circleMarker([lat, lon], {
-      radius:      Math.max(3, mag * mag * 0.7),
-      fillColor:   p.color || '#aaa',
-      color:       'rgba(255,255,255,0.3)',
-      weight:      0.5,
-      opacity:     0.9,
-      fillOpacity: mag >= 5 ? 0.9 : 0.75,
-    });
-
-    circle.bindPopup(buildPopup(p, lat, lon), { maxWidth: 280 });
-    grpSismos.addLayer(circle);
+  document.getElementById('ctr').textContent=f.length.toLocaleString()+' sismos visibles';
+  document.getElementById('sc3').textContent=f.length.toLocaleString();
+  var ul=document.getElementById('el');
+  ul.innerHTML='';
+  f.slice(0,12).forEach(function(x){
+    var p=x.properties;
+    var m=parseFloat(p.magnitud)||0;
+    var li=document.createElement('li');
+    li.className='ei';
+    li.innerHTML='<div class="em" style="color:'+col(m)+'">'+m+'</div>'
+      +'<div><div style="font-size:12px;font-weight:600">'+(p.ciudad_cercana||'Ecuador')+'</div>'
+      +'<div class="ed">'+(p.fecha_ec||'')+' - '+(p.profundidad_km||0)+'km</div></div>';
+    var lat=x.geometry.coordinates[1];
+    var lon=x.geometry.coordinates[0];
+    li.onclick=function(){map.setView([lat,lon],10);};
+    ul.appendChild(li);
   });
+  upCh2(f);
 }
 
-function buildPopup(p, lat, lon) {
-  const shareText = encodeURIComponent(
-    `🌎 Sismo M${p.magnitud} en Ecuador | ${p.fecha_ec} | ${p.ciudad_cercana||''} | riesgoec.onrender.com #SismoEcuador #IGEPN`
-  );
-  const waUrl = `https://wa.me/?text=${shareText}`;
-  const twUrl = `https://twitter.com/intent/tweet?text=${shareText}`;
-  const año = p.fecha_utc ? p.fecha_utc.substring(0,4) : '—';
-
-  return `
-    <div>
-      <div class="pop-mag" style="color:${p.color||'#fff'}">${p.magnitud} <span style="font-size:14px;font-weight:400">${p.tipo_magnitud||'M'}</span></div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">${p.lugar||'Ecuador'}</div>
-      <div class="pop-row"><span class="pop-lbl">Año</span><span>${año}</span></div>
-      <div class="pop-row"><span class="pop-lbl">Hora (EC)</span><span>${p.fecha_ec||'—'}</span></div>
-      <div class="pop-row"><span class="pop-lbl">Profundidad</span><span>${p.profundidad_km} km</span></div>
-      <div class="pop-row"><span class="pop-lbl">Tipo prof.</span><span>${p.clasificacion_prof||'—'}</span></div>
-      <div class="pop-row"><span class="pop-lbl">Ciudad cercana</span><span>${p.ciudad_cercana||'—'} (${p.dist_ciudad_km}km)</span></div>
-      <div class="pop-row"><span class="pop-lbl">Intensidad</span><span>${p.intensidad_mercalli||'—'}</span></div>
-      <div class="pop-row"><span class="pop-lbl">Fuente</span><span>${p.fuente||'USGS'}</span></div>
-      ${p.url_detalle ? `<div style="margin-top:6px"><a href="${p.url_detalle}" target="_blank" style="color:var(--blue);font-size:11px">Ver boletín oficial →</a></div>` : ''}
-      <div class="share-row">
-        <a href="${waUrl}" target="_blank" class="share-btn" style="background:#25d366">WhatsApp</a>
-        <a href="${twUrl}" target="_blank" class="share-btn" style="background:#1da1f2">Twitter/X</a>
-      </div>
-    </div>`;
+function mkPop(p){
+  var m=parseFloat(p.magnitud)||0;
+  var c=col(m);
+  var yr=p.fecha_utc?p.fecha_utc.substring(0,4):'--';
+  var tx=encodeURIComponent('Sismo Mw'+m+' Ecuador | '+(p.fecha_ec||'')+' | '+(p.ciudad_cercana||'')+' | riesgoec.onrender.com #SismoEcuador');
+  return '<div><div class="pr" style="color:'+c+'">Mw '+m+'</div>'
+    +'<div style="font-size:11px;color:#8b949e;margin-bottom:6px">'+clsf(m)+'</div>'
+    +'<div class="rw"><span class="rl">Lugar</span><span style="font-size:11px">'+(p.lugar||'Ecuador')+'</span></div>'
+    +'<div class="rw"><span class="rl">Ano</span><span>'+yr+'</span></div>'
+    +'<div class="rw"><span class="rl">Hora EC</span><span>'+(p.fecha_ec||'--')+'</span></div>'
+    +'<div class="rw"><span class="rl">Profundidad</span><span>'+(p.profundidad_km||0)+' km</span></div>'
+    +'<div class="rw"><span class="rl">Tipo prof.</span><span style="font-size:11px">'+(p.clasificacion_prof||'--')+'</span></div>'
+    +'<div class="rw"><span class="rl">Ciudad</span><span>'+(p.ciudad_cercana||'--')+' ('+(p.dist_ciudad_km||0)+'km)</span></div>'
+    +'<div class="rw"><span class="rl">Fuente</span><span>'+(p.fuente||'USGS')+'</span></div>'
+    +(p.url_detalle?'<a href="'+p.url_detalle+'" target="_blank" style="color:#378add;font-size:11px;display:block;margin-top:4px">Ver boletin oficial</a>':'')
+    +'<div class="sw"><a href="https://wa.me/?text='+tx+'" target="_blank" style="background:#25d366">WhatsApp</a>'
+    +'<a href="https://twitter.com/intent/tweet?text='+tx+'" target="_blank" style="background:#1da1f2">Twitter/X</a></div></div>';
 }
 
-function renderVolcanes(features) {
-  grpVolcanes.clearLayers();
-  const vc = {ROJO:'#FF0000',NARANJA:'#FF6600',AMARILLO:'#FFCC00',VERDE:'#00CC44',SIN_DATO:'#888888'};
-  features.forEach(f => {
-    const p  = f.properties;
-    const lv = p.nivel || 'SIN_DATO';
-    const icon = L.divIcon({
-      html:`<div style="width:16px;height:16px;background:${vc[lv]||'#888'};
-            border-radius:50% 50% 0 50%;transform:rotate(45deg);
-            border:2px solid #fff;box-shadow:0 0 6px ${vc[lv]||'#888'}88"></div>`,
-      className:'', iconSize:[16,16],
-    });
-    const m = L.marker([f.geometry.coordinates[1], f.geometry.coordinates[0]], { icon });
-    m.bindPopup(`
-      <div>
-        <div style="font-size:16px;font-weight:700;color:${vc[lv]||'#888'}">🌋 ${p.nombre}</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">${p.elevacion_m}m s.n.m.</div>
-        <div class="pop-row"><span class="pop-lbl">Nivel IGEPN</span>
-          <span style="color:${vc[lv]};font-weight:700">${lv}</span></div>
-        <div style="margin-top:8px">
-          <a href="${p.boletin_url||'https://igepn.edu.ec'}" target="_blank"
-             style="color:var(--blue);font-size:11px">Ver boletín IGEPN →</a>
-        </div>
-      </div>`);
-    grpVolcanes.addLayer(m);
-  });
-}
-
-function renderHeatmap(features) {
-  if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
-  if (!document.getElementById('tog-heatmap').checked) return;
-  const pts = features.map(f => [
-    f.geometry.coordinates[1],
-    f.geometry.coordinates[0],
-    Math.min(1, (f.properties.magnitud||2.5) / 8),
-  ]);
-  heatLayer = L.heatLayer(pts, {
-    radius:25, blur:20, maxZoom:10,
-    gradient:{0.2:'#0000ff',0.5:'#ffff00',0.8:'#ff6600',1:'#ff0000'},
-  }).addTo(map);
-}
-
-function renderEventList(features) {
-  const list = document.getElementById('events-list');
-  list.innerHTML = '';
-  features.slice(0, 15).forEach(f => {
-    const p = f.properties;
-    const li = document.createElement('li');
-    li.className = 'ev-item';
-    li.innerHTML = `
-      <div class="ev-mag" style="color:${p.color}">${p.magnitud}</div>
-      <div>
-        <div style="font-size:12px;font-weight:600">${p.ciudad_cercana||'Ecuador'}</div>
-        <div class="ev-info">${p.fecha_ec||''} · ${p.profundidad_km}km</div>
-      </div>`;
-    li.onclick = () => map.setView([f.geometry.coordinates[1],f.geometry.coordinates[0]], 10);
-    list.appendChild(li);
-  });
-}
-
-// ══════════════════════════════════════
-// GRÁFICOS
-// ══════════════════════════════════════
-function updateMagChart(sismos_x_hora) {
-  const horas  = Array.from({length:24},(_,i)=>String(i).padStart(2,'0'));
-  const counts = horas.map(h => sismos_x_hora[h]||0);
-  if (chartMag) chartMag.destroy();
-  chartMag = new Chart(document.getElementById('mag-chart').getContext('2d'), {
+function upCh1(h){
+  var hrs=[];for(var i=0;i<24;i++)hrs.push(String(i).padStart(2,'0'));
+  var v=hrs.map(function(x){return h[x]||0;});
+  if(ch1)ch1.destroy();
+  ch1=new Chart(document.getElementById('ch1').getContext('2d'),{
     type:'bar',
-    data:{ labels: horas.map(h=>h+':00'),
-           datasets:[{data:counts,backgroundColor:'#378add88',borderColor:'#378add',borderWidth:1}] },
-    options:{ responsive:true,plugins:{legend:{display:false}},
-              scales:{ x:{ticks:{color:'#8b949e',font:{size:8},maxTicksLimit:6},grid:{color:'#30363d'}},
-                       y:{ticks:{color:'#8b949e',font:{size:8}},grid:{color:'#30363d'},beginAtZero:true} } }
+    data:{labels:hrs.map(function(x){return x+'h';}),datasets:[{data:v,backgroundColor:'#378add88',borderColor:'#378add',borderWidth:1}]},
+    options:{responsive:true,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#8b949e',font:{size:8},maxTicksLimit:8},grid:{color:'#30363d'}},
+              y:{ticks:{color:'#8b949e',font:{size:8}},grid:{color:'#30363d'},beginAtZero:true}}}
   });
 }
 
-function updateDecadeChart(features) {
-  const decades = {};
-  features.forEach(f => {
-    const yr = parseInt((f.properties.fecha_utc||'2000').substring(0,4));
-    const dec = Math.floor(yr/10)*10;
-    decades[dec] = (decades[dec]||0)+1;
+function upCh2(feats){
+  var dc={};
+  feats.forEach(function(f){
+    var yr=parseInt((f.properties.fecha_utc||'2000').substring(0,4));
+    var d=Math.floor(yr/10)*10;
+    dc[d]=(dc[d]||0)+1;
   });
-  const labels = Object.keys(decades).sort();
-  const values = labels.map(d => decades[d]);
-  if (chartDecade) chartDecade.destroy();
-  chartDecade = new Chart(document.getElementById('decade-chart').getContext('2d'), {
+  var lb=Object.keys(dc).sort();
+  if(ch2)ch2.destroy();
+  if(lb.length===0)return;
+  ch2=new Chart(document.getElementById('ch2').getContext('2d'),{
     type:'bar',
-    data:{ labels: labels.map(d=>d+'s'),
-           datasets:[{data:values,backgroundColor:'#a855f788',borderColor:'#a855f7',borderWidth:1}] },
-    options:{ responsive:true,plugins:{legend:{display:false}},
-              scales:{ x:{ticks:{color:'#8b949e',font:{size:8}},grid:{color:'#30363d'}},
-                       y:{ticks:{color:'#8b949e',font:{size:8}},grid:{color:'#30363d'},beginAtZero:true} } }
+    data:{labels:lb.map(function(x){return x+'s';}),datasets:[{data:lb.map(function(x){return dc[x];}),backgroundColor:'#a855f788',borderColor:'#a855f7',borderWidth:1}]},
+    options:{responsive:true,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#8b949e',font:{size:8}},grid:{color:'#30363d'}},
+              y:{ticks:{color:'#8b949e',font:{size:8}},grid:{color:'#30363d'},beginAtZero:true}}}
   });
 }
 
-// ══════════════════════════════════════
-// CONTROLES
-// ══════════════════════════════════════
-function toggleLayer(name) {
-  const cbs = { sismos:'tog-sismos', volcanes:'tog-volcanes',
-                heatmap:'tog-heatmap', placas:'tog-placas' };
-  const cb = document.getElementById(cbs[name]);
-  cb.checked = !cb.checked;
-  if (name==='sismos')   { cb.checked ? grpSismos.addTo(map)   : map.removeLayer(grpSismos); }
-  if (name==='volcanes') { cb.checked ? grpVolcanes.addTo(map) : map.removeLayer(grpVolcanes); }
-  if (name==='heatmap')  { renderHeatmap(allSismos); }
-  if (name==='placas') {
-    if (cb.checked) {
-      loadPlacas().then(() => { renderPlacas(); grpPlacas.addTo(map); });
-    } else { map.removeLayer(grpPlacas); }
+function setMag(r,btn){
+  curMag=r;
+  document.querySelectorAll('.mb').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  render();
+}
+
+function setYr(){
+  yF=parseInt(document.getElementById('yf').value);
+  yT=parseInt(document.getElementById('yt').value);
+  if(yF>yT)yT=yF;
+  document.getElementById('yfv').textContent=yF;
+  document.getElementById('ytv').textContent=yT;
+  render();
+}
+
+function setH(h,btn){
+  curH=h;
+  document.querySelectorAll('.tb span').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  loadS();
+}
+
+function togL(n){
+  var cb=document.getElementById('tg-'+n);
+  cb.checked=!cb.checked;
+  if(n==='sismos'){cb.checked?gS.addTo(map):map.removeLayer(gS);}
+  else if(n==='volcanes'){cb.checked?gV.addTo(map):map.removeLayer(gV);}
+  else if(n==='heat'){render();}
+  else if(n==='placas'){
+    if(cb.checked){
+      fetch('https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_boundaries.json')
+        .then(function(r){return r.json();})
+        .then(function(d){
+          gP.clearLayers();
+          L.geoJSON(d,{style:{color:'#a855f7',weight:2,opacity:0.7,fillOpacity:0,dashArray:'5 3'}}).addTo(gP);
+          gP.addTo(map);
+        }).catch(function(){alert('No se pudo cargar placas tectonicas. Verifique conexion a internet.');});
+    }else{map.removeLayer(gP);}
+  }
+  else if(n==='prov'){
+    if(cb.checked){
+      fetch('/data/provincias.geojson')
+        .then(function(r){return r.json();})
+        .then(function(d){
+          gPr.clearLayers();
+          L.geoJSON(d,{
+            style:{color:'#00cc44',weight:1.5,opacity:0.8,fillOpacity:0.05,fillColor:'#00cc44'},
+            onEachFeature:function(f,l){
+              l.bindTooltip('<b>'+( f.properties.DPA_DESPRO||'')+'</b>',{sticky:true,direction:'auto'});
+            }
+          }).addTo(gPr);
+          gPr.addTo(map);
+        }).catch(function(e){console.error('provincias.geojson:',e);});
+    }else{map.removeLayer(gPr);gPr.clearLayers();}
+  }
+  else if(n==='cant'){
+    if(cb.checked){
+      fetch('/data/cantones.geojson')
+        .then(function(r){return r.json();})
+        .then(function(d){
+          gCa.clearLayers();
+          L.geoJSON(d,{
+            style:{color:'#378add',weight:1,opacity:0.7,fillOpacity:0.03,fillColor:'#378add'},
+            onEachFeature:function(f,l){
+              l.bindTooltip('<b>'+(f.properties.DPA_DESCAN||'')+'</b><br>'+(f.properties.DPA_DESPRO||''),{sticky:true});
+            }
+          }).addTo(gCa);
+          gCa.addTo(map);
+        }).catch(function(e){console.error('cantones.geojson:',e);});
+    }else{map.removeLayer(gCa);gCa.clearLayers();}
+  }
+  else if(n==='parr'){
+    if(cb.checked){
+      fetch('/data/parroquias_simple.geojson')
+        .then(function(r){return r.json();})
+        .then(function(d){
+          gPa.clearLayers();
+          L.geoJSON(d,{
+            style:{color:'#ffd700',weight:0.6,opacity:0.6,fillOpacity:0.02,fillColor:'#ffd700'},
+            onEachFeature:function(f,l){
+              l.bindTooltip('<b>'+(f.properties.DPA_DESPAR||'')+'</b><br>'+(f.properties.DPA_DESCAN||'')+', '+(f.properties.DPA_DESPRO||''),{sticky:true});
+            }
+          }).addTo(gPa);
+          gPa.addTo(map);
+        }).catch(function(e){console.error('parroquias_simple.geojson:',e);});
+    }else{map.removeLayer(gPa);gPa.clearLayers();}
   }
 }
 
-async function checkTemblando() {
-  const btn = document.getElementById('btn-temblando');
-  const res = document.getElementById('temblando-res');
-  btn.textContent = 'Consultando...';
-  try {
-    const resp = await fetch('/api/temblando_ahora');
-    const data = await resp.json();
-    res.style.display = 'block';
-    res.style.borderColor = data.temblando ? '#ff4444' : '#00cc44';
-    res.textContent = data.mensaje;
-    if (data.temblando && data.sismos?.[0]) {
-      const s = data.sismos[0];
-      map.setView([s.lat, s.lon], 9);
-    }
-  } catch(e) {
-    res.style.display = 'block';
-    res.textContent = 'Error al consultar. Intente de nuevo.';
-  } finally {
-    btn.textContent = '🔴 ¿ESTÁ TEMBLANDO AHORA?';
-  }
+async function checkT(){
+  var btn=document.getElementById('bt');
+  var res=document.getElementById('tr');
+  btn.textContent='Consultando...';
+  try{
+    var r=await fetch('/api/temblando_ahora');
+    var d=await r.json();
+    res.style.display='block';
+    res.style.borderColor=d.temblando?'#ff4444':'#00cc44';
+    res.textContent=d.mensaje;
+    if(d.temblando&&d.sismos&&d.sismos[0]){map.setView([d.sismos[0].lat,d.sismos[0].lon],9);}
+  }catch(e){res.style.display='block';res.textContent='Error al consultar.';}
+  btn.textContent='ESTA TEMBLANDO AHORA?';
 }
 
-function searchLocation(q) {
-  if (q.length < 3) return;
+function doSearch(q){
+  if(q.length<3)return;
   clearTimeout(window._st);
-  window._st = setTimeout(async () => {
-    try {
-      const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q+', Ecuador')}&format=json&limit=1`);
-      const d = await r.json();
-      if (d.length > 0) map.setView([d[0].lat, d[0].lon], 12);
-    } catch(e) {}
-  }, 600);
+  window._st=setTimeout(async function(){
+    try{
+      var r=await fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q+', Ecuador')+'&format=json&limit=1',{headers:{'User-Agent':'RiesgoEC/1.0'}});
+      var d=await r.json();
+      if(d.length>0)map.setView([parseFloat(d[0].lat),parseFloat(d[0].lon)],12);
+    }catch(e){}
+  },700);
 }
-if (name==='provincias') {
-  if (cb.checked) { loadConali('provincias', '#00cc44', 1.5).then(() => grpProvincias.addTo(map)); }
-  else { map.removeLayer(grpProvincias); }
-}
-if (name==='cantones') {
-  if (cb.checked) { loadConali('cantones', '#378add', 1).then(() => grpCantones.addTo(map)); }
-  else { map.removeLayer(grpCantones); }
-}
-if (name==='parroquias') {
-  if (cb.checked) { loadConali('parroquias_simple', '#ffd700', 0.5).then(() => grpParroquias.addTo(map)); }
-  else { map.removeLayer(grpParroquias); }
-}
-// ══════════════════════════════════════
-// AUTO-REFRESH
-// ══════════════════════════════════════
-function startRefresh() {
-  setInterval(async () => {
-    countdown--;
-    document.getElementById('countdown').textContent = countdown;
-    if (countdown <= 0) {
-      countdown = 30;
-      await Promise.all([loadSismos(), loadVolcanes(), loadStats(), loadAlertas()]);
+
+function startR(){
+  setInterval(async function(){
+    cdown--;
+    document.getElementById('cd').textContent=cdown;
+    if(cdown<=0){
+      cdown=30;
+      loadS();
+      loadV();
+      loadStats();
+      loadAlertas();
     }
-  }, 1000);
+  },1000);
 }
 
-
-async function loadConali(nombre, color, peso) {
-  const grps = { provincias: grpProvincias, cantones: grpCantones, parroquias: grpParroquias };
-  const grp  = nombre.startsWith('prov') ? grpProvincias :
-               nombre.startsWith('cant') ? grpCantones : grpParroquias;
-  grp.clearLayers();
-  try {
-    const resp = await fetch(`/data/${nombre}.geojson`);
-    const data = await resp.json();
-    L.geoJSON(data, {
-      style: {
-        color:       color,
-        weight:      peso,
-        opacity:     0.7,
-        fillOpacity: 0.05,
-        fillColor:   color,
-      },
-      onEachFeature: (feature, layer) => {
-        const p = feature.properties;
-        const nombre_lugar = p.DPA_DESPRO || p.DPA_DESCAN || p.DPA_DESPAR || p.NOMBRE || '';
-        const codigo       = p.DPA_PROVIN || p.DPA_CANTON || p.DPA_PARROQ || '';
-        if (nombre_lugar) {
-          layer.bindTooltip(`<b>${nombre_lugar}</b><br>Código: ${codigo}`, {sticky: true});
-        }
-      }
-    }).addTo(grp);
-  } catch(e) {
-    console.error(`Error cargando ${nombre}:`, e);
-  }
-}
-
-// ══════════════════════════════════════
 // INICIO
-// ══════════════════════════════════════
-(async function init() {
-  // Esperar que el mapa esté listo antes de cargar datos
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // Cargar modo TODO por defecto para mostrar histórico
-  currentHours  = 999999;
-  modoHistorico = true;
-  document.querySelector('.time-btn:last-child').classList.add('active');
-  
-  await Promise.all([loadSismos(), loadVolcanes(), loadStats(), loadAlertas()]);
-  startRefresh();
-  
-  // Forzar redibujado del mapa
-  setTimeout(() => { map.invalidateSize(); }, 1000);
-})();
+loadS();
+loadV();
+loadStats();
+loadAlertas();
+setTimeout(function(){map.invalidateSize();},300);
+startR();
 </script>
 </body>
 </html>
