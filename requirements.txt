@@ -1,60 +1,27 @@
-# ══════════════════════════════════════════════════════════
-# GEOPORTAL RIESGOS ECUADOR — requirements.txt
-# Instalar con: pip install -r requirements.txt
-# O con conda:  conda install --file requirements.txt
-# ══════════════════════════════════════════════════════════
-
-# Web Framework
 flask==3.0.3
 flask-cors==4.0.1
 flask-compress==1.15
-
-# HTTP y scraping
 requests==2.32.3
 beautifulsoup4==4.12.3
-lxml==5.2.2
+lxml==5.3.0
 feedparser==6.0.11
 httpx==0.27.0
-
-# Datos geoespaciales
-geopandas==0.14.4
-shapely==2.0.4
-pyproj==3.6.1
-fiona==1.9.6
+geopandas==1.0.1
+shapely==2.0.6
+pyproj==3.7.0
 geopy==2.4.1
 owslib==0.31.0
-
-# Scheduler
 apscheduler==3.10.4
-
-# Base de datos
 sqlalchemy==2.0.30
-
-# Notificaciones del sistema
 plyer==2.1.0
-
-# Análisis de datos
 pandas==2.2.2
 numpy==1.26.4
-
-# Visualización estática (opcional)
-matplotlib==3.9.0
-folium==0.17.0
-
-# Generación de PDFs (reportes de zona de riesgo)
 reportlab==4.2.0
 qrcode==7.4.2
 Pillow==10.3.0
-
-# Logging mejorado
 colorlog==6.8.2
-
-# Fechas y zonas horarias
 python-dateutil==2.9.0
 pytz==2024.1
-
-# Variables de entorno
 python-dotenv==1.0.1
-
-# Utilidades
 tqdm==4.66.4
+setuptools==75.0.0
