@@ -162,8 +162,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 var map = L.map('map', {center: [-1.83, -78.18], zoom: 7});
 
 // Tiles alternativos - Esri es el mas confiable sin API key
-var ESRI = L.tileLayer(
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+var map = L.map('map', {center: [-1.83, -78.18], zoom: 7});
+
+// Mapa base sin tiles externos - fondo gris con bordes
+map.getContainer().style.background = '#2d3436';
+
+var SIMPLE = L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+  {attribution:'CartoDB', maxZoom:18, subdomains:'abcd'}
+);
+var DARK = L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  {attribution:'CartoDB', maxZoom:18, subdomains:'abcd'}
+);
+var SAT = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  {attribution:'Esri', maxZoom:18}
+);
+
+// Intentar cargar CartoDB, si falla usar fondo vacío
+SIMPLE.addTo(map);
+SIMPLE.on('tileerror', function() {
+  console.warn('Tiles no disponibles - usando mapa sin fondo');
+});
+
+L.control.layers(
+  {'Claro':SIMPLE,'Oscuro':DARK,'Satelite':SAT},
+  {},{position:'topright',collapsed:true}
+).addTo(map);
   {attribution: 'Tiles by Esri', maxZoom: 18}
 );
 var ESRI_SAT = L.tileLayer(
