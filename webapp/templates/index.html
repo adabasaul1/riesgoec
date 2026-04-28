@@ -143,7 +143,12 @@ var map = L.map('map', {center:[-1.83,-78.18], zoom:7});
 map.getContainer().style.background = '#1a3a5c';
 
 // Intentar CartoCD Voyager
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'OpenStreetMap',maxZoom:19}).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'Map data OpenStreetMap',
+  maxZoom:19,
+  subdomains:['a','b','c'],
+  crossOrigin:''
+}).addTo(map);
 
 var gS=L.layerGroup().addTo(map);
 var gV=L.layerGroup().addTo(map);
