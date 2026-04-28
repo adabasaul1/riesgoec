@@ -32,7 +32,11 @@ CORS(app)
 
 @app.route("/")
 def index():
-    return render_template("index.html", mapbox_token=cfg.MAPBOX_TOKEN)
+    from flask import send_from_directory
+    return send_from_directory(
+        str(Path(__file__).parent / "templates"),
+        "index.html"
+    )
 
 
 @app.route("/sitemap.xml")
