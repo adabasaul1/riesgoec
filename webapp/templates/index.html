@@ -45,7 +45,7 @@ body{font-family:Arial,sans-serif;background:#0d1117;color:#e6edf3;height:100vh;
 .ei2{padding:5px 0;border-bottom:1px solid #30363d;cursor:pointer;display:flex;align-items:center;gap:6px}
 .em2{font-size:13px;font-weight:bold;min-width:35px}
 .ed2{font-size:11px;color:#8b949e;line-height:1.4}
-#map{flex:1}
+#map{flex:1;min-height:400px;height:100%}
 #sp{width:210px;background:#161b22;border-left:1px solid #30363d;overflow-y:auto;padding:8px;flex-shrink:0}
 .sk{background:#1f2937;border-radius:6px;padding:8px;margin-bottom:6px;text-align:center}
 .sl22{font-size:10px;color:#8b949e;text-transform:uppercase;margin-bottom:2px}
@@ -426,7 +426,7 @@ loadS();
 loadV();
 loadStats();
 loadAlertas();
-setTimeout(function(){map.invalidateSize();},500);
+setTimeout(function(){map.invalidateSize();},100);setTimeout(function(){map.invalidateSize();},500);setTimeout(function(){map.invalidateSize();},1500);
 startR();
 </script>
 </body>
